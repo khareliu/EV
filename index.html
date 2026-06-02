@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EV para Equivalente a Combustão com IA</title>
+    <!-- Tailwind CSS para design premium -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons para ícones bonitos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Manifest básico para suporte a "Adicionar ao Ecrã Principal" (PWA-like) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#10B981">
+    <style>
+        /* Estilos adicionais para uma experiência tátil excelente em dispositivos móveis */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        input {
+            user-select: text;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Efeito de digitação/loader da IA */
+        .dot-flashing {
+            position: relative;
+            width: 6px;
+            height: 6px;
+            border-radius: 5px;
+            background-color: #a78bfa;
+            color: #a78bfa;
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: .5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        .dot-flashing::before {
+            left: -12px;
+            width: 6px;
+            height: 6px;
+            border-radius: 5px;
+            background-color: #a78bfa;
+            color: #a78bfa;
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 12px;
+            width: 6px;
+            height: 6px;
+            border-radius: 5px;
+            background-color: #a78bfa;
+            color: #a78bfa;
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: 1s;
+        }
+        @keyframes dot-flashing {
+            0% { background-color: #a78bfa; }
+            50%, 100% { background-color: #4c1d95; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col justify-between">
+
+    <!-- Header Principal -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 px-4 py-3 shadow-md">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <i data-lucide="zap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base leading-tight">EV Litros Equivalente</h1>
+                    <p class="text-xs text-slate-400">Conversor de Eficiência Elétrica</p>
+                    <p class="text-[10px] text-slate-500 font-medium leading-none mt-0.5">by Rui Karel</p>
+                </div>
+            </div>
+            <button id="infoBtn" class="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-700 transition">
+                <i data-lucide="info" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow max-w-md w-full mx-auto px-4 py-6 space-y-6 overflow-y-auto pb-10">
+        
+        <!-- Bloco de Seleção de Tipo de Equivalência (Três Opções) -->
+        <div class="bg-slate-800 p-1.5 rounded-xl border border-slate-700 flex gap-1">
+            <button id="modeFinancialBtn" class="flex-1 py-2 px-1.5 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-1 bg-emerald-500 text-slate-950 shadow">
+                <i data-lucide="coins" class="w-4 h-4"></i>
+                <span>Financeira</span>
+            </button>
+            <button id="modeEnergyBtn" class="flex-1 py-2 px-1.5 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200">
+                <i data-lucide="gauge" class="w-4 h-4"></i>
+                <span>Energética</span>
+            </button>
+            <button id="modeDistanceBtn" class="flex-1 py-2 px-1.5 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200">
+                <i data-lucide="route" class="w-4 h-4"></i>
+                <span>Por Distância</span>
+            </button>
+        </div>
+
+        <!-- Secção de Input de Valores -->
+        <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700/80 shadow-xl space-y-5">
+            <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase">Valores de Consumo</h2>
+            
+            <!-- Consumo do Elétrico -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label for="evCons" class="text-sm text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
+                        Consumo Médio do EV
+                    </label>
+                    <span id="evConsVal" class="text-emerald-400 font-bold text-lg">16.0 kWh/100km</span>
+                </div>
+                <input id="evCons" type="range" min="8" max="35" step="0.5" value="16.0" 
+                    class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                <div class="flex justify-between text-xs text-slate-500">
+                    <span>8.0 kWh</span>
+                    <span>Consumo típico</span>
+                    <span>35.0 kWh</span>
+                </div>
+            </div>
+
+            <!-- Consumo de Referência a Combustão para Comparar -->
+            <div class="space-y-2 pt-2 border-t border-slate-700/50">
+                <div class="flex justify-between items-center">
+                    <label for="combustCons" class="text-sm text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="car" class="w-4 h-4 text-purple-400"></i>
+                        Consumo do Carro a Combustão
+                    </label>
+                    <span id="combustConsVal" class="text-purple-400 font-bold text-lg">6.5 L/100km</span>
+                </div>
+                <input id="combustCons" type="range" min="3.0" max="15.0" step="0.1" value="6.5" 
+                    class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                <div class="flex justify-between text-xs text-slate-500">
+                    <span>3.0 L/100km</span>
+                    <span>Para comparação</span>
+                    <span>15.0 L/100km</span>
+                </div>
+            </div>
+
+            <!-- Input da Distância Personalizada (Apenas visível no modo distância) -->
+            <div id="distanceInputs" class="hidden space-y-2 pt-2 border-t border-slate-700/50">
+                <div class="flex justify-between items-center">
+                    <label for="distanceKm" class="text-sm text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="milestone" class="w-4 h-4 text-indigo-400"></i>
+                        Distância da Simulação
+                    </label>
+                    <span id="distanceKmVal" class="text-indigo-400 font-bold text-lg">15 000 km</span>
+                </div>
+                <input id="distanceKm" type="range" min="500" max="100000" step="500" value="15000" 
+                    class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                <div class="flex justify-between text-xs text-slate-500">
+                    <span>500 km</span>
+                    <span>Média anual ou viagem</span>
+                    <span>100k km</span>
+                </div>
+            </div>
+
+            <!-- Preço da Eletricidade e Combustível -->
+            <div id="financialInputs" class="space-y-5 pt-2 border-t border-slate-700/50">
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label for="elecPrice" class="text-sm text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="euro" class="w-4 h-4 text-amber-500"></i>
+                            Custo do kWh (Eletricidade)
+                        </label>
+                        <span id="elecPriceVal" class="text-amber-400 font-bold text-lg">0.20 €/kWh</span>
+                    </div>
+                    <input id="elecPrice" type="range" min="0.05" max="0.55" step="0.01" value="0.20" 
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>0.05 € (Vazio)</span>
+                        <span>Média doméstica</span>
+                        <span>0.55 € (Rápido)</span>
+                    </div>
+                </div>
+
+                <!-- Preço do Combustível de Comparação -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label for="fuelPrice" class="text-sm text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="fuel" class="w-4 h-4 text-cyan-400"></i>
+                            Preço do Litro do Combustível
+                        </label>
+                        <span id="fuelPriceVal" class="text-cyan-400 font-bold text-lg">1.75 €/Litro</span>
+                    </div>
+                    <input id="fuelPrice" type="range" min="1.10" max="2.40" step="0.02" value="1.75" 
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>1.10 €</span>
+                        <span>Gasolina / Gasóleo</span>
+                        <span>2.40 €</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fator de Conversão Física / Energética (Apenas visível no modo energético) -->
+            <div id="energyInputs" class="hidden space-y-4 pt-2 border-t border-slate-700/50">
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700/60">
+                    <label class="text-sm text-slate-300 block mb-2">Selecione o Combustível de Equivalência:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="fuelGasolinaBtn" class="py-2 px-3 rounded-lg text-xs font-semibold bg-cyan-600 text-white border border-cyan-500">
+                            Gasolina (8.9 kWh/L)
+                        </button>
+                        <button id="fuelGasoleoBtn" class="py-2 px-3 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-650">
+                            Gasóleo (10.0 kWh/L)
+                        </button>
+                    </div>
+                    <p class="text-slate-400 text-xs mt-3 leading-relaxed">
+                        A equivalência energética direta baseia-se na quantidade de energia puramente contida num litro de combustível fóssil e assume 100% de eficiência.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Caixa de Resultados Tradicionais -->
+        <div class="bg-gradient-to-br from-emerald-950/60 to-slate-800 rounded-2xl p-6 border border-emerald-500/30 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="text-center space-y-1">
+                <p id="resultLabel" class="text-xs uppercase tracking-wider text-emerald-400 font-semibold">Gasto Financeiro Equivalente</p>
+                <div class="flex items-center justify-center gap-1.5 py-3">
+                    <i id="resultIcon" data-lucide="droplet" class="w-8 h-8 text-cyan-400 animate-pulse"></i>
+                    <span id="resultValue" class="text-5xl font-extrabold text-white tracking-tight">1.8</span>
+                    <span id="resultUnit" class="text-xl font-medium text-slate-300 ml-1">L / 100km</span>
+                </div>
+                <p id="resultText" class="text-sm text-slate-300 px-2 leading-relaxed">
+                    Carregar o teu elétrico custa <strong class="text-emerald-400">3.20 €</strong> por cada 100km. Num carro a combustão a custar 1.75 €/L, equivaleria a gastar apenas <strong class="text-cyan-400">1.83 Litros aos 100km</strong>!
+                </p>
+            </div>
+            
+            <hr class="my-4 border-slate-700/50">
+
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="bg-slate-900/40 p-3 rounded-xl border border-slate-800">
+                    <p id="col1Label" class="text-[10px] uppercase text-slate-400">Custo EV / 100km</p>
+                    <p id="evCostPer100" class="text-lg font-bold text-emerald-400">3.20 €</p>
+                </div>
+                <div class="bg-slate-900/40 p-3 rounded-xl border border-slate-800">
+                    <p id="col2Label" class="text-[10px] uppercase text-slate-400">Poupança Estimada *</p>
+                    <p id="savingsPer100" class="text-lg font-bold text-cyan-400">7.30 € / 100km</p>
+                </div>
+            </div>
+            <p id="disclaimerNote" class="text-[10px] text-center text-slate-500 mt-2">* Em comparação com carro equivalente que gaste 6.5L/100km</p>
+        </div>
+
+        <!-- NOVO PAINEL IA: Consultor de Eficiência Gemini -->
+        <div class="bg-gradient-to-tr from-indigo-950 via-slate-800 to-indigo-950/40 rounded-2xl p-5 border border-purple-500/20 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-purple-500/10 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-purple-500/20 text-purple-300 rounded-lg animate-pulse">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm text-purple-200">Consultor IA de Eficiência</h3>
+                        <p class="text-[10px] text-purple-400">Powered by Gemini 3.1 Flash</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="aiReportBtn" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 active:scale-95 text-[11px] font-bold text-white rounded-lg transition shadow-md flex items-center gap-1">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                        <span>Análise Geral</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zona de Exibição das Respostas / Análise da IA -->
+            <div id="aiBox" class="bg-slate-900/60 border border-slate-700/60 rounded-xl p-4 min-h-[100px] flex flex-col justify-center relative overflow-hidden max-h-[400px] overflow-y-auto">
+                <div id="aiEmptyState" class="text-center space-y-2 py-4">
+                    <i data-lucide="brain-circuit" class="w-8 h-8 mx-auto text-purple-500/40"></i>
+                    <p class="text-xs text-slate-400 font-medium">Clica em "Análise Geral" para gerar um relatório inteligente ou faz uma pergunta rápida abaixo.</p>
+                </div>
+
+                <!-- Loader da IA -->
+                <div id="aiLoader" class="hidden flex-col items-center justify-center space-y-3 py-6">
+                    <div class="dot-flashing"></div>
+                    <span class="text-xs text-purple-300 font-semibold animate-pulse">O Gemini está a calcular o seu relatório...</span>
+                </div>
+
+                <!-- Conteúdo Gerado -->
+                <div id="aiContent" class="hidden text-xs text-slate-300 leading-relaxed space-y-2 prose prose-invert">
+                    <!-- Injetado via JS -->
+                </div>
+            </div>
+
+            <!-- Sugestões de Perguntas Rápidas (Pills) -->
+            <div class="space-y-1.5">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">Questões sugeridas:</span>
+                <div class="flex flex-wrap gap-1.5">
+                    <button class="ai-pill text-[10px] bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white px-2.5 py-1 rounded-full border border-purple-500/10 transition">
+                        🚗 Como poupar bateria em autoestrada?
+                    </button>
+                    <button class="ai-pill text-[10px] bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white px-2.5 py-1 rounded-full border border-purple-500/10 transition">
+                        🔌 Tarifa bi-horária compensa em Portugal?
+                    </button>
+                    <button class="ai-pill text-[10px] bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white px-2.5 py-1 rounded-full border border-purple-500/10 transition">
+                        ⚡ PCR: Postos Rápidos VS Carga Doméstica
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulário de Chat -->
+            <form id="aiChatForm" class="flex gap-2">
+                <input id="aiInput" type="text" placeholder="Escreve uma questão ao assistente EV..." 
+                    class="flex-grow bg-slate-900 border border-slate-700 focus:border-purple-500 focus:outline-none rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 transition shadow-inner">
+                <button type="submit" class="bg-purple-600 hover:bg-purple-700 active:scale-95 text-white p-2 rounded-xl transition shadow-lg flex items-center justify-center">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Dicas Rápidas de Instalação -->
+        <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/40 space-y-2">
+            <h3 class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-amber-400"></i>
+                Como instalar no telemóvel?
+            </h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                <strong>iPhone (Safari):</strong> Clica no ícone <i class="inline-block"><i data-lucide="share" class="w-3 h-3 inline mb-0.5"></i></i> de Partilhar e escolhe "Ecrã Principal".<br>
+                <strong>Android (Chrome):</strong> Clica nos <i class="inline-block"><i data-lucide="more-vertical" class="w-3 h-3 inline mb-0.5"></i></i> 3 pontos e escolhe "Instalar aplicação" ou "Adicionar ao Ecrã Principal".
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Modal de Informação Adicional -->
+    <div id="infoModal" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity duration-200">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-start">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="calculator" class="w-5 h-5 text-emerald-400"></i>
+                    Sobre os Cálculos
+                </h3>
+                <button id="closeInfoBtn" class="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+                <p>Esta aplicação ajuda-te a traduzir a eficiência do teu veículo elétrico (kWh/100km) para o jargão tradicional de "litros aos 100km" de três formas:</p>
+                
+                <p><strong>1. Equivalência Financeira:</strong><br>
+                Calcula o custo real em euros de percorrer 100km a eletricidade e calcula quantos litros de combustível conseguirias comprar com o mesmo dinheiro.</p>
+                
+                <p><strong>2. Equivalência Energética:</strong><br>
+                Compara a eletricidade consumida com a energia pura armazenada num combustível fóssil (1L de Gasolina = ~8.9 kWh, 1L de Gasóleo = ~10.0 kWh).</p>
+
+                <p><strong>3. Simulação por Distância:</strong><br>
+                Compara os custos e poupanças totais gerados a longo prazo (ex: para uma viagem de 1.000 km ou para a quilometragem anual de 15.000 km).</p>
+            </div>
+            <button id="closeInfoOkBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition shadow-lg">
+                Entendido!
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 py-3 text-center text-[11px] text-slate-600 border-t border-slate-900">
+        <p>Desenvolvido com foco em máxima eficiência energética.</p>
+    </footer>
+
+    <!-- Lógica da Aplicação -->
+    <script>
+        // Inicialização de Ícones Lucide
+        lucide.createIcons();
+
+        // Estados da Aplicação
+        let activeMode = 'financial'; // 'financial', 'energy' ou 'distance'
+        let energyFuelType = 'gasolina'; // 'gasolina' ou 'gasoleo'
+
+        // Conteúdos energéticos em kWh por litro
+        const FUEL_ENERGY = {
+            gasolina: 8.9,
+            gasoleo: 10.0
+        };
+
+        // Elementos DOM
+        const modeFinancialBtn = document.getElementById('modeFinancialBtn');
+        const modeEnergyBtn = document.getElementById('modeEnergyBtn');
+        const modeDistanceBtn = document.getElementById('modeDistanceBtn');
+        
+        const financialInputs = document.getElementById('financialInputs');
+        const energyInputs = document.getElementById('energyInputs');
+        const distanceInputs = document.getElementById('distanceInputs');
+        
+        const fuelGasolinaBtn = document.getElementById('fuelGasolinaBtn');
+        const fuelGasoleoBtn = document.getElementById('fuelGasoleoBtn');
+
+        const evConsSlider = document.getElementById('evCons');
+        const evConsVal = document.getElementById('evConsVal');
+        const combustConsSlider = document.getElementById('combustCons');
+        const combustConsVal = document.getElementById('combustConsVal');
+        const distanceKmSlider = document.getElementById('distanceKm');
+        const distanceKmVal = document.getElementById('distanceKmVal');
+        const elecPriceSlider = document.getElementById('elecPrice');
+        const elecPriceVal = document.getElementById('elecPriceVal');
+        const fuelPriceSlider = document.getElementById('fuelPrice');
+        const fuelPriceVal = document.getElementById('fuelPriceVal');
+
+        const resultLabel = document.getElementById('resultLabel');
+        const resultValue = document.getElementById('resultValue');
+        const resultUnit = document.getElementById('resultUnit');
+        const resultText = document.getElementById('resultText');
+        const resultIcon = document.getElementById('resultIcon');
+        
+        const col1Label = document.getElementById('col1Label');
+        const evCostPer100 = document.getElementById('evCostPer100');
+        const col2Label = document.getElementById('col2Label');
+        const savingsPer100 = document.getElementById('savingsPer100');
+        const disclaimerNote = document.getElementById('disclaimerNote');
+
+        const infoBtn = document.getElementById('infoBtn');
+        const infoModal = document.getElementById('infoModal');
+        const closeInfoBtn = document.getElementById('closeInfoBtn');
+        const closeInfoOkBtn = document.getElementById('closeInfoOkBtn');
+
+        // Alternar Modos
+        modeFinancialBtn.addEventListener('click', () => {
+            activeMode = 'financial';
+            setActiveTabStyles(modeFinancialBtn, [modeEnergyBtn, modeDistanceBtn]);
+            financialInputs.classList.remove('hidden');
+            energyInputs.classList.add('hidden');
+            distanceInputs.classList.add('hidden');
+            calculate();
+        });
+
+        modeEnergyBtn.addEventListener('click', () => {
+            activeMode = 'energy';
+            setActiveTabStyles(modeEnergyBtn, [modeFinancialBtn, modeDistanceBtn]);
+            financialInputs.classList.add('hidden');
+            energyInputs.classList.remove('hidden');
+            distanceInputs.classList.add('hidden');
+            calculate();
+        });
+
+        modeDistanceBtn.addEventListener('click', () => {
+            activeMode = 'distance';
+            setActiveTabStyles(modeDistanceBtn, [modeFinancialBtn, modeEnergyBtn]);
+            financialInputs.classList.remove('hidden'); // Necessita de preços para calcular custos totais
+            energyInputs.classList.add('hidden');
+            distanceInputs.classList.remove('hidden');
+            calculate();
+        });
+
+        function setActiveTabStyles(activeBtn, inactiveBtns) {
+            activeBtn.className = "flex-1 py-2 px-1.5 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-1 bg-emerald-500 text-slate-950 shadow";
+            inactiveBtns.forEach(btn => {
+                btn.className = "flex-1 py-2 px-1.5 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200";
+            });
+        }
+
+        // Seleção do combustível no modo energético
+        fuelGasolinaBtn.addEventListener('click', () => {
+            energyFuelType = 'gasolina';
+            fuelGasolinaBtn.className = "py-2 px-3 rounded-lg text-xs font-semibold bg-cyan-600 text-white border border-cyan-500";
+            fuelGasoleoBtn.className = "py-2 px-3 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-650";
+            calculate();
+        });
+
+        fuelGasoleoBtn.addEventListener('click', () => {
+            energyFuelType = 'gasoleo';
+            fuelGasoleoBtn.className = "py-2 px-3 rounded-lg text-xs font-semibold bg-cyan-600 text-white border border-cyan-500";
+            fuelGasolinaBtn.className = "py-2 px-3 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-650";
+            calculate();
+        });
+
+        // Eventos dos Sliders
+        evConsSlider.addEventListener('input', (e) => {
+            evConsVal.textContent = parseFloat(e.target.value).toFixed(1) + " kWh/100km";
+            calculate();
+        });
+
+        combustConsSlider.addEventListener('input', (e) => {
+            combustConsVal.textContent = parseFloat(e.target.value).toFixed(1) + " L/100km";
+            calculate();
+        });
+
+        distanceKmSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            distanceKmVal.textContent = val.toLocaleString('pt-PT') + " km";
+            calculate();
+        });
+
+        elecPriceSlider.addEventListener('input', (e) => {
+            elecPriceVal.textContent = parseFloat(e.target.value).toFixed(2) + " €/kWh";
+            calculate();
+        });
+
+        fuelPriceSlider.addEventListener('input', (e) => {
+            fuelPriceVal.textContent = parseFloat(e.target.value).toFixed(2) + " €/Litro";
+            calculate();
+        });
+
+        // Modal de Informações
+        infoBtn.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+        });
+        const hideModal = () => infoModal.classList.add('hidden');
+        closeInfoBtn.addEventListener('click', hideModal);
+        closeInfoOkBtn.addEventListener('click', hideModal);
+
+        // Core de Cálculo Matemático
+        function calculate() {
+            const evCons = parseFloat(evConsSlider.value);
+            const combustCons = parseFloat(combustConsSlider.value);
+            
+            // Repor ícone por defeito caso não estejamos em modo de distância
+            if (activeMode !== 'distance') {
+                resultIcon.setAttribute('data-lucide', 'droplet');
+                resultIcon.className = "w-8 h-8 text-cyan-400 animate-pulse";
+                lucide.createIcons();
+            }
+
+            if (activeMode === 'financial') {
+                const elecPrice = parseFloat(elecPriceSlider.value);
+                const fuelPrice = parseFloat(fuelPriceSlider.value);
+
+                // Custo de percorrer 100km com o carro elétrico
+                const evCost = evCons * elecPrice;
+                
+                // Quantidade de litros de combustível fóssil equivalentes a esse custo
+                const equivalentLiters = evCost / fuelPrice;
+
+                // Comparação de poupança dinâmica com o carro a combustão configurado
+                const thermalCost = combustCons * fuelPrice;
+                const savings = Math.max(0, thermalCost - evCost);
+
+                // Atualizar UI
+                resultLabel.textContent = "Gasto Financeiro Equivalente";
+                resultValue.textContent = equivalentLiters.toFixed(1);
+                resultUnit.textContent = "L / 100km";
+                
+                resultText.innerHTML = `Carregar o teu elétrico custa <strong class="text-emerald-400">${evCost.toFixed(2)}€</strong> por cada 100km. Num carro a combustão com o preço atual de ${fuelPrice.toFixed(2)}€/L, equivaleria a gastar apenas <strong class="text-cyan-400">${equivalentLiters.toFixed(2)} Litros aos 100km</strong>!`;
+                
+                col1Label.textContent = "Custo EV / 100km";
+                evCostPer100.textContent = `${evCost.toFixed(2)} €`;
+                col2Label.textContent = "Poupança Estimada *";
+                savingsPer100.textContent = `${savings.toFixed(2)} € / 100km`;
+                disclaimerNote.textContent = `* Em comparação com carro equivalente que gaste ${combustCons.toFixed(1)}L/100km`;
+
+            } else if (activeMode === 'energy') {
+                // Modo Equivalência Energética Física
+                const kwhPerLiter = FUEL_ENERGY[energyFuelType];
+                
+                // Conversão direta de kWh/100km para L/100km considerando 100% de correspondência energética
+                const equivalentLiters = evCons / kwhPerLiter;
+
+                // Para comparação energética, calculamos a energia poupada em kWh vs o consumo térmico configurado
+                const thermalEnergy = combustCons * kwhPerLiter; // kWh
+                const energySaved = Math.max(0, thermalEnergy - evCons);
+
+                // Atualizar UI
+                resultLabel.textContent = "Equivalência Energética Direta";
+                resultValue.textContent = equivalentLiters.toFixed(1);
+                resultUnit.textContent = "L / 100km";
+
+                resultText.innerHTML = `Quimicamente, 1 Litro de ${energyFuelType} contém aproximadamente <strong>${kwhPerLiter.toFixed(1)} kWh</strong> de energia. O consumo de ${evCons.toFixed(1)} kWh/100km do teu EV equivale energeticamente a gastar apenas <strong class="text-emerald-400">${equivalentLiters.toFixed(2)} L/100km</strong>.`;
+
+                col1Label.textContent = "Consumo Físico EV";
+                evCostPer100.textContent = `${evCons.toFixed(1)} kWh`;
+                col2Label.textContent = "Energia Poupada *";
+                savingsPer100.textContent = `${energySaved.toFixed(1)} kWh`;
+                disclaimerNote.textContent = `* Em comparação com o consumo de referência física de ${combustCons.toFixed(1)}L/100km`;
+
+            } else if (activeMode === 'distance') {
+                // Modo Cálculo por Distância Percorrida
+                const distance = parseInt(distanceKmSlider.value);
+                const elecPrice = parseFloat(elecPriceSlider.value);
+                const fuelPrice = parseFloat(fuelPriceSlider.value);
+
+                // Energia consumida e custos totais na distância estipulada
+                const totalKwh = (evCons / 100) * distance;
+                const totalEvCost = totalKwh * elecPrice;
+
+                // Combustível consumido e custos totais na distância estipulada
+                const totalLitersIce = (combustCons / 100) * distance;
+                const totalIceCost = totalLitersIce * fuelPrice;
+
+                // Poupança real absoluta
+                const totalSavings = Math.max(0, totalIceCost - totalEvCost);
+
+                // Alternar dinamicamente o ícone de resultado para a simulação de poupança financeira total
+                resultIcon.setAttribute('data-lucide', 'piggy-bank');
+                resultIcon.className = "w-8 h-8 text-emerald-400 animate-pulse";
+                lucide.createIcons();
+
+                // Atualizar UI
+                resultLabel.textContent = `Poupança Líquida Total (${distance.toLocaleString('pt-PT')} km)`;
+                resultValue.textContent = Math.round(totalSavings).toLocaleString('pt-PT');
+                resultUnit.textContent = "€";
+
+                resultText.innerHTML = `Ao percorrer <strong>${distance.toLocaleString('pt-PT')} km</strong>, o teu elétrico gasta <strong>${Math.round(totalKwh).toLocaleString('pt-PT')} kWh</strong> de energia custando <strong class="text-emerald-400">${totalEvCost.toFixed(2)}€</strong>. O carro térmico gastaria <strong>${Math.round(totalLitersIce).toLocaleString('pt-PT')} Litros</strong> custando <strong class="text-purple-400">${totalIceCost.toFixed(2)}€</strong>.`;
+
+                col1Label.textContent = "Custo Total EV";
+                evCostPer100.textContent = `${totalEvCost.toFixed(2)} €`;
+                col2Label.textContent = "Custo Total Combustão";
+                savingsPer100.textContent = `${totalIceCost.toFixed(2)} €`;
+                disclaimerNote.textContent = `* Simulação para ${distance.toLocaleString('pt-PT')} km, com base nos consumos e preços definidos acima.`;
+            }
+        }
+
+        // Executar cálculo na carga inicial da página
+        calculate();
+
+        // Lógica de Integração com a API do Gemini
+        const apiKey = ""; // Chave de API vazia para que a plataforma Canvas injete automaticamente em tempo de execução
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const aiReportBtn = document.getElementById('aiReportBtn');
+        const aiBox = document.getElementById('aiBox');
+        const aiEmptyState = document.getElementById('aiEmptyState');
+        const aiLoader = document.getElementById('aiLoader');
+        const aiContent = document.getElementById('aiContent');
+        const aiChatForm = document.getElementById('aiChatForm');
+        const aiInput = document.getElementById('aiInput');
+        const aiPills = document.querySelectorAll('.ai-pill');
+
+        // Função de utilidade para chamar o LLM com tratamento de erros e retrocesso exponencial (backoff)
+        async function fetchGeminiResponse(promptText, retries = 3, delay = 1000) {
+            const systemPrompt = "Atua como um consultor especialista em mobilidade elétrica, carros elétricos (EV) e eficiência energética em Portugal. Escreve respostas altamente precisas, úteis, focadas em economia, pragmáticas e sempre em Português de Portugal (PT-PT). Usa uma estrutura organizada e visual com emojis curtos e legíveis. Nunca inventes dados, sê direto.";
+            
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Erro na API Gemini: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) return text;
+                    throw new Error("Estrutura de resposta inesperada da API.");
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    // Exponential backoff silencioso
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                }
+            }
+        }
+
+        // Formatação básica de Markdown para renderizar de forma bonita no HTML simples
+        function formatMarkdownToHTML(mdText) {
+            let html = mdText
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrito
+                .replace(/\*(.*?)\*/g, '<em>$1</em>') // Itálico
+                .replace(/### (.*?)\n/g, '<h4 class="text-sm font-bold text-purple-300 mt-3 mb-1">$1</h4>') // Subtítulo
+                .replace(/## (.*?)\n/g, '<h3 class="text-base font-bold text-purple-200 mt-4 mb-2">$1</h3>') // Título
+                .replace(/^- (.*?)\n/gm, '<li class="ml-4 list-disc">$1</li>') // Listas simples
+                .replace(/\n\n/g, '</p><p class="mb-2">') // Parágrafos
+                .replace(/\n/g, '<br>'); // Quebra de linhas restantes
+            return `<p class="mb-2">${html}</p>`;
+        }
+
+        // Função para mostrar o estado de carregamento
+        function showAILoading() {
+            aiEmptyState.classList.add('hidden');
+            aiContent.classList.add('hidden');
+            aiLoader.classList.remove('hidden');
+            aiBox.scrollTop = 0;
+        }
+
+        // Função para ocultar o estado de carregamento e mostrar o resultado
+        function showAIResult(formattedHTML) {
+            aiLoader.classList.add('hidden');
+            aiContent.classList.remove('hidden');
+            aiContent.innerHTML = formattedHTML;
+        }
+
+        // Mostrar erros de forma amigável
+        function showAIError(errorMessage) {
+            aiLoader.classList.add('hidden');
+            aiContent.classList.remove('hidden');
+            aiContent.innerHTML = `
+                <div class="text-red-400 p-2 text-center space-y-1">
+                    <i data-lucide="alert-circle" class="w-6 h-6 mx-auto"></i>
+                    <p class="font-bold">Não foi possível obter resposta.</p>
+                    <p class="text-[10px] text-slate-400">${errorMessage}</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // Ação: Gerar Relatório Completo Personalizado
+        aiReportBtn.addEventListener('click', async () => {
+            showAILoading();
+
+            // Reunir variáveis atuais da app para passar no prompt
+            const evCons = parseFloat(evConsSlider.value);
+            const combustCons = parseFloat(combustConsSlider.value);
+            const elecPrice = parseFloat(elecPriceSlider.value);
+            const fuelPrice = parseFloat(fuelPriceSlider.value);
+            const distance = parseInt(distanceKmSlider.value);
+
+            const promptText = `
+                Gera um relatório rápido e analítico para um condutor com o seguinte perfil de mobilidade em Portugal:
+                - Consumo do veículo elétrico (EV): ${evCons} kWh/100km.
+                - Consumo do carro a combustão comparativo: ${combustCons} L/100km.
+                - Preço da eletricidade dele: ${elecPrice} €/kWh.
+                - Preço do combustível (gasolina/gasóleo): ${fuelPrice} €/Litro.
+                - Quilometragem simulada/anual: ${distance} km.
+
+                Calcula e aborda brevemente:
+                1. O custo anual estimado do EV vs Combustão para percorrer ${distance} km.
+                2. Uma estimativa realista de poupança líquida anual (em Euros).
+                3. Dá 2 conselhos práticos de tarifários elétricos domésticos adequados para Portugal (ex: bi-horário ou tri-horário no mercado livre ERSE) ou como otimizar o carregamento.
+                4. Sê muito conciso, focado no leitor português e formata a resposta com listas curtas e fáceis de ler no telemóvel.
+            `;
+
+            try {
+                const rawResponse = await fetchGeminiResponse(promptText);
+                const formattedHTML = formatMarkdownToHTML(rawResponse);
+                showAIResult(formattedHTML);
+            } catch (err) {
+                console.error("Erro no relatório Gemini:", err);
+                showAIError("Verifica a tua ligação à internet ou tenta novamente mais tarde.");
+            }
+        });
+
+        // Ação: Chat Interativo
+        aiChatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = aiInput.value.trim();
+            if (!query) return;
+
+            aiInput.value = "";
+            showAILoading();
+
+            // Obter variáveis para enriquecer o contexto da pergunta
+            const evCons = parseFloat(evConsSlider.value);
+            const elecPrice = parseFloat(elecPriceSlider.value);
+
+            const promptText = `
+                O utilizador perguntou: "${query}".
+                
+                Utiliza este contexto opcional se for útil para a resposta (o utilizador tem um EV que consome em média ${evCons} kWh/100km e carrega a cerca de ${elecPrice} €/kWh).
+                Responde de forma clara, muito sucinta e focada na realidade portuguesa.
+            `;
+
+            try {
+                const rawResponse = await fetchGeminiResponse(promptText);
+                const formattedHTML = formatMarkdownToHTML(rawResponse);
+                showAIResult(formattedHTML);
+            } catch (err) {
+                console.error("Erro no Chat Gemini:", err);
+                showAIError("Lamentamos, mas ocorreu um erro a processar a tua resposta.");
+            }
+        });
+
+        // Ação: Clique nas Perguntas Rápidas (Pills)
+        aiPills.forEach(pill => {
+            pill.addEventListener('click', async () => {
+                const queryText = pill.textContent.replace(/[🚗🔌⚡]/g, '').trim();
+                aiInput.value = queryText;
+                aiChatForm.dispatchEvent(new Event('submit'));
+            });
+        });
+
+    </script>
+</body>
+</html>
